@@ -10,13 +10,21 @@ import (
 const DRIVER = "mysql"
 var db *gorm.DB
 
+type IConfig interface {
+	GetPort() int
+	GetHost() string
+	GetDEBUG() bool
+	GetDB() map[string]interface{}
+	GetRedis() map[string]interface{}
+}
+
 type App struct {
-	Config map[string]interface{}
+	Config *IConfig
 	beforeMiddlewares []interface{}
 	afterMiddlewares []interface{}
 }
 
-func New(config map[string]interface {})*App {
+func New(config *IConfig)*App {
 	return &App{Config:config}
 }
 
@@ -28,31 +36,39 @@ func (app *App) addAfterMiddleware(middleware interface {})  {
 }
 
 func (app *App) connectDB(cb func(db *gorm.DB, err error)) {
-	username, ok := app.Config["DB_Username"].(string)
+	dbMapper := (*app.Config).GetDB()
+	if dbMapper == nil {
+		cb(nil, errors.New("Config getDB fail"))
+		return
+	}
+	fmt.Println("------", dbMapper)
+	username, ok := dbMapper["DB_Username"].(string)
 	if !ok {
 		cb(nil, errors.New("DB_Username is not ok"))
 		return
 	}
-	password, ok := app.Config["DB_Password"].(string)
+	password, ok := dbMapper["DB_Password"].(string)
 	if !ok {
 		cb(nil, errors.New("DB_Password is not ok"))
 		return
 	}
-	host, ok := app.Config["DB_Host"].(string)
+	host, ok := dbMapper["DB_Host"].(string)
 	if !ok {
 		cb(nil, errors.New("DB_Host is not ok"))
 		return
 	}
-	port, ok := app.Config["DB_Port"].(int64)
+	port, ok := dbMapper["DB_Port"].(int64)
 	if !ok {
 		cb(nil, errors.New("DB_Port is not ok"))
 		return
 	}
-	name, ok := app.Config["DB_Name"].(string)
+	name, ok := dbMapper["DB_Name"].(string)
 	if !ok {
 		cb(nil, errors.New("DB_Name is not ok"))
 		return
 	}
+	fmt.Println("=-====", username, password, host, port, name)
+	return
 	DSN := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local", username, password, host, port, name)
 	var err error
 	db, err = gorm.Open(DRIVER, DSN)
@@ -66,15 +82,12 @@ func (app *App) connectDB(cb func(db *gorm.DB, err error)) {
 // Start 服务器正式启动开始
 func (app *App) Start() (*gin.Engine, error)  {
 	engine := gin.Default()
-	port, ok := app.Config["Port"].(int64)
-	if !ok {
-		return nil, errors.New("Config Port is invalid. Should be int64")
-	}
+	port := (*app.Config).GetPort()
 	portStr := fmt.Sprintf("%d", port)
 	err := engine.Run(portStr)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("server is starting now! port : ", app.Config["Port"])
+	fmt.Println("server is starting now! port : ", port)
 	return engine, nil
 }
