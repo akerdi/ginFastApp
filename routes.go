@@ -12,7 +12,7 @@ type IRoute interface {
 	GetMiddles() []gin.HandlerFunc
 }
 
-func (app *App) AddRoutes(route IRoute)  {
+func (app *App) AddRoute(route IRoute)  {
 	app.Routes = append(app.Routes, route)
 }
 
