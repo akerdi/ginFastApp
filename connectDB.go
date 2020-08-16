@@ -15,6 +15,10 @@ type RedisClient struct {
 	client *redis.Client
 }
 
+func (r *RedisClient) GetClient() *redis.Client {
+	return  r.client
+}
+
 func (app *App) ConnectDB(cb func(db *gorm.DB, err error)) {
 	dbMapper := app.Config.GetDB()
 	if dbMapper == nil {
